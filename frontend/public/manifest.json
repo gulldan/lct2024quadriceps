@@ -1,0 +1,17 @@
+{
+    "theme_color": "#f69435",
+    "background_color": "#f69435",
+    "display": "standalone",
+    "scope": "/",
+    "start_url": "/",
+    "name": "КОПИРАЙТШНАЯ",
+    "short_name": "КОПИРАЙТШНАЯ",
+    "description": "a vot",
+    "icons": [
+        {
+            "src": "/gool.png",
+            "sizes": "228x238",
+            "type": "image/png"
+        }
+    ]
+}

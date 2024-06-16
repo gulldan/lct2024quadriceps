@@ -1,0 +1,5 @@
+package: wav2vec
+output: internal/pkg/wav2vec/desc.gen.go
+generate:
+  models: true
+  client: true

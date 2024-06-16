@@ -1,0 +1,5 @@
+package: videocopy
+output: internal/pkg/videocopy/desc.gen.go
+generate:
+  models: true
+  client: true

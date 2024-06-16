@@ -1,0 +1,333 @@
+version: '3'
+
+networks:
+  lct2024:
+    name: lct2024
+    driver: bridge
+
+services:
+  wav2vec:
+    build:
+      context: ../wav2vec
+      dockerfile: Dockerfile
+    image: wav2vec
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+    container_name: wav2vec
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    networks:
+      - lct2024
+    ports:
+      - ${LOCALHOST_IP}:${AE_PORT}:8000
+    volumes:
+      - type: bind
+        source: ${MODELS_PATH}
+        target: /app/models
+    environment:
+      HUGGINGFACE_HUB_CACHE: ${HUGGINGFACE_HUB_CACHE}
+      TORCH_HOME: ${TORCH_HOME}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+
+  video_copy:
+    build:
+      context: ../video_copy
+      dockerfile: Dockerfile
+    image: video_copy
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+    container_name: video_copy
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    networks:
+      - lct2024
+    ports:
+      - ${LOCALHOST_IP}:${VE_PORT}:8000
+    volumes:
+      - type: bind
+        source: ${MODELS_PATH}
+        target: /app/models
+    environment:
+      HUGGINGFACE_HUB_CACHE: ${HUGGINGFACE_HUB_CACHE}
+      TORCH_HOME: ${TORCH_HOME}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      CROP_MODEL: ./models/ve/yolo.pt
+      ENCODER_MODEL: ./models/ve/sscd_disc_large.torchscript.pt
+      BATCH_SIZE: 128
+
+  bff:
+    build:
+      context: ../bff
+      dockerfile: Dockerfile
+    image: bff
+    container_name: bff
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    networks:
+      - lct2024
+    depends_on:
+      - db
+    ports:
+      - ${LOCALHOST_IP}:${BFF_EXT_HTTP_PORT}:8888
+      - ${LOCALHOST_IP}:${BFF_EXT_GRPC_PORT}:7083
+    environment:
+      LOG_LEVEL: "debug"
+      PG_ADDR: 'host=db user=postgres password=${POSTGRES_PASSWORD} dbname=bazadannih port=5432 sslmode=disable'
+      MINIO_ADDR: minio-lct:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_IS_USE_SSL: false
+      # VIDEOCOPY_ADDR: http://video_copy:8000
+      # WAV2VEC_ADDR: http://wav2vec:8000
+  
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: frontend
+    container_name: frontend
+    restart: always
+    depends_on:
+      - bff
+    networks:
+      - lct2024
+    ports:
+      - ${LOCALHOST_IP}:${FRONTEND_EXT_PORT}:3000
+    environment:
+      - BFF_HOST=bff
+      - BFF_PORT=${BFF_EXT_HTTP_PORT}
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - lct2024
+    ports:
+      - ${LOCALHOST_IP}:${PROMETHEUS_EXT_PORT}:9090
+    volumes:
+      - type: bind
+        source: ${PROMETHEUS_PATH}/config
+        target: /etc/prometheus
+      - type: bind
+        source: ${PROMETHEUS_PATH}/data
+        target: /prometheus
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    depends_on:
+      - prometheus
+    networks:
+      - lct2024
+    ports:
+      - ${LOCALHOST_IP}:${GRAFANA_EXT_PORT}:3000
+    volumes:
+      - type: bind
+        source: ${GRAFANA_PATH}
+        target: /var/lib/grafana
+      - type: bind
+        source: ${GRAFANA_PATH}/provisioning
+        target: /etc/grafana/provisioning
+  
+  keydb:
+    container_name: keydb
+    image: eqalpha/keydb:latest
+    restart: always
+    networks:
+      - lct2024
+    ports:
+      -  ${LOCALHOST_IP}:${KEYDB_EXT_PORT}:6379
+
+  qdrant:
+    container_name: qdrant
+    image: qdrant/qdrant:latest
+    restart: always
+    networks:
+      - lct2024
+    volumes:
+      - type: bind
+        source: ${QDRANT_PATH}
+        target: /qdrant/storage
+    ports:
+      -  ${LOCALHOST_IP}:${QDRANT_EXT_PORT_HTTP}:6333
+      -  ${LOCALHOST_IP}:${QDRANT_EXT_PORT_GRPC}:6334
+
+  minio-lct:
+    image: minio/minio:latest
+    entrypoint: ['minio', 'server', '/data', '--console-address', ':9001']
+    container_name: minio-lct
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    depends_on:
+      - prometheus
+    networks:
+      - lct2024
+    ports:
+      - ${LOCALHOST_IP}:${MINIO_INT_PORT}:9000
+      - ${LOCALHOST_IP}:${MINIO_EXT_PORT}:9001
+    volumes:
+      - type: bind
+        source: ${MINIO_PATH}/data
+        target: /minio
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_PROMETHEUS_URL=http://prometheus:9090
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+
+  db:
+    container_name: db
+    image: postgres:16-alpine
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    networks:
+      - lct2024
+    ports:
+      - ${LOCALHOST_IP}:${POSTGRES_EXT_PORT}:5432
+    volumes:
+      - type: bind
+        source: ${DB_PATH}
+        target: /var/lib/postgresql/data
+      - ./configs/postgresql/init-pg-databases.sh:/docker-entrypoint-initdb.d/init-pg-databases.sh
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: postgres -c 'max_connections=1000'
+
+  init-container:
+    image: alpine/curl:latest
+    container_name: init-container
+    entrypoint: ["sh", "/usr/local/bin/token.sh"]
+    restart: "no"
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    depends_on:
+      - openobserve
+    networks:
+      - lct2024
+    environment:
+      - VECTOR_CONFIG=${VECTOR_CONFIG}
+      - TOKEN_USER=${ZO_ROOT_USER_EMAIL}
+      - TOKEN_PASSWORD=${ZO_ROOT_USER_PASSWORD}
+      - VECTOR_DIR=${VECTOR_DIR}
+    volumes:
+      - type: bind
+        source: ${VECTOR_DIR}
+        target: /etc/vector
+      - type: bind
+        source: ./configs/vector/token.sh
+        target: /usr/local/bin/token.sh
+
+  vector:
+    image: timberio/vector:0.38.0-alpine
+    container_name: vector
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    depends_on:
+      - openobserve
+      - init-container
+    networks:
+      - lct2024
+    ports:
+      - ${LOCALHOST_IP}:${VECTOR_EXT_PORT}:8686
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - VECTOR_CONFIG=${VECTOR_CONFIG}
+      - ZO_ROOT_USER_EMAIL=${ZO_ROOT_USER_EMAIL}
+    volumes:
+      - type: bind
+        source: ${VECTOR_DIR}
+        target: /etc/vector
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:v0.10.7-amd64
+    container_name: openobserve
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    networks:
+      - lct2024
+    ports:
+      - ${LOCALHOST_IP}:${OPENOBSERVE_EXT_PORT}:5080
+    environment:
+      - ZO_ROOT_USER_EMAIL=${ZO_ROOT_USER_EMAIL}
+      - ZO_ROOT_USER_PASSWORD=${ZO_ROOT_USER_PASSWORD}
+      - ZO_DATA_DIR=${ZO_DATA_DIR}
+      - ZO_TELEMETRY=false
+      - RUST_LOG=warn
+    volumes:
+      - type: bind
+        source: ${OPENOBSERVE_DIR}
+        target: ${ZO_DATA_DIR}
+  
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "1"
+    network_mode: host
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - '/:/host:ro,rslave'
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    deploy:
+      mode: global

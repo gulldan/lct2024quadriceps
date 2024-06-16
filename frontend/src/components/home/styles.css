@@ -1,0 +1,26 @@
+.center-screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-right: -50%;
+    transform: translate(-50%, -50%);
+  }
+
+  
+  .left-screen {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    margin-right: -25%;
+    transform: scaleX(-1) translate(0%, -50%);
+  }
+  
+
+  .right-screen {
+    position: absolute;
+    top: 50%;
+    left: 100%;
+    margin-left: -25%;
+    transform: translate(-50%, -50%);
+  }
+  

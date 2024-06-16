@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package bff.v1;
+
+import "google/api/annotations.proto";
+
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/gulldan/lct2024_copyright/bff/proto/v1;bffv1";
+
+message UploadOriginalVideoRequest {
+  string name = 1;
+  bytes file = 2;
+}
+
+message UploadOriginalVideoResponse {}
+
+message CreateTaskFromFileRequest {
+  string name = 1;
+  bytes file = 2;
+}
+
+message CreateTaskFromFileResponse {
+  int64 id = 1;
+}
+
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TASK_STATUS_FAIL = 1;
+  TASK_STATUS_IN_PROGRESS = 2;
+  TASK_STATUS_DONE = 3;
+} 
+
+message TaskPreview {
+  int64 id = 1;
+  string name = 2;
+  string preview_url = 3;
+  TaskStatus status = 4;
+}
+
+message GetTasksPreviewRequest {
+  uint64 page = 1;
+  uint64 limit = 2;
+}
+
+message GetTasksPreviewResponse {
+  repeated TaskPreview tasks_preview = 1;
+  uint64 total = 2;
+}
+
+message GetTaskRequest {
+  int64 id = 1;
+}
+
+message CopyrightTimestamp {
+  uint64 copyright_start = 1;
+  uint64 copyright_end = 2;
+  uint64 orig_start = 3;
+  uint64 orig_end = 4;
+  string orig_id = 5;
+}
+
+message GetTaskResponse {
+  int64 id = 1;
+  string name = 2;
+  string video_url = 3;
+  TaskStatus status = 4;
+  repeated CopyrightTimestamp copyright = 5;
+}
+
+service ScanTasksService {
+  rpc CreateTaskFromFile(CreateTaskFromFileRequest) returns (CreateTaskFromFileResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tasks/create/upload"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      consumes: "multipart/form-data",
+      security: {
+        security_requirement: {
+          key: "access_token";
+          value: {}
+        }
+      };
+    };
+  }
+
+  rpc UploadOriginalVideo(UploadOriginalVideoRequest) returns (UploadOriginalVideoResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/original/upload"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      consumes: "multipart/form-data",
+    };
+  }
+
+  rpc GetTasksPreview(GetTasksPreviewRequest) returns (GetTasksPreviewResponse) {
+    option (google.api.http) = {get: "/api/v1/tasks_preview"};
+  }
+
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {
+    option (google.api.http) = {get: "/api/v1/tasks/{id}"};
+  }
+}

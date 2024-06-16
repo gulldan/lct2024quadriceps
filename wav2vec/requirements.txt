@@ -1,0 +1,8 @@
+granian
+fastapi
+transformers
+python-multipart
+librosa
+qdrant-client
+tqdm
+yappi

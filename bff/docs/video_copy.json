@@ -1,0 +1,226 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "FastAPI",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/upload_video": {
+            "post": {
+                "summary": "Upload",
+                "description": "Send video file to add its into vector database",
+                "operationId": "upload_upload_video_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upload_upload_video_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Update database",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UploadResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/find_video": {
+            "post": {
+                "summary": "Search",
+                "description": "Send video file to find copyright infringement",
+                "operationId": "search_find_video_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_search_find_video_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Find copyright infringement",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Body_search_find_video_post": {
+                "properties": {
+                    "threashold": {
+                        "type": "number",
+                        "title": "Threashold"
+                    },
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "threashold",
+                    "file"
+                ],
+                "title": "Body_search_find_video_post"
+            },
+            "Body_upload_upload_video_post": {
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file"
+                ],
+                "title": "Body_upload_upload_video_post"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "SearchResponse": {
+                "properties": {
+                    "piracy_name": {
+                        "type": "string",
+                        "title": "Piracy Name"
+                    },
+                    "piracy_start_frame": {
+                        "type": "integer",
+                        "title": "Piracy Start Frame"
+                    },
+                    "piracy_end_frame": {
+                        "type": "integer",
+                        "title": "Piracy End Frame"
+                    },
+                    "licence_name": {
+                        "type": "string",
+                        "title": "Licence Name"
+                    },
+                    "license_start_frame": {
+                        "type": "integer",
+                        "title": "License Start Frame"
+                    },
+                    "license_end_frame": {
+                        "type": "integer",
+                        "title": "License End Frame"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "piracy_name",
+                    "piracy_start_frame",
+                    "piracy_end_frame",
+                    "licence_name",
+                    "license_start_frame",
+                    "license_end_frame"
+                ],
+                "title": "SearchResponse"
+            },
+            "UploadResponse": {
+                "properties": {
+                    "filename": {
+                        "type": "string",
+                        "title": "Filename"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "filename",
+                    "message"
+                ],
+                "title": "UploadResponse"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}
