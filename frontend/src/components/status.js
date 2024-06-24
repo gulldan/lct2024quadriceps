@@ -1,4 +1,4 @@
-import { Spinner, Badge } from "react-bootstrap";
+import { Badge } from "react-bootstrap";
 
 export default function PrettyStatus({status}) {
     let status_pretty = "Неизвестный статус";
@@ -15,11 +15,7 @@ export default function PrettyStatus({status}) {
       status_pretty = <Badge bg="danger">Анализ сорвался</Badge>;
       break;
     case "TASK_STATUS_IN_PROGRESS":
-      status_pretty = (
-        <>
-          Идет анализ.. <Spinner size="sm" />
-        </>
-      );
+      status_pretty = <Badge bg="info">Идет анализ</Badge>;
       break;
     case "TASK_STATUS_DONE":
       status_pretty = <Badge bg="success">Анализ завершен</Badge>;

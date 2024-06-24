@@ -52,6 +52,7 @@ func copyrightToProto(c []model.Copyright) []*bffv1.CopyrightTimestamp {
 			OrigStart:      uint64(c[i].OrigStart),
 			OrigEnd:        uint64(c[i].OrigEnd),
 			OrigId:         c[i].OrigID,
+			OrigUrl:        c[i].OrigURL,
 		}
 	}
 

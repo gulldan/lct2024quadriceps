@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gulldan/lct2024_copyright/bff/pkg/config"
 	"github.com/rs/zerolog"
@@ -31,9 +30,9 @@ func startHTTPServer(cfg *config.Config, logger *zerolog.Logger, grpcEndpoint st
 	httpServer := http.Server{
 		Addr:              "0.0.0.0:" + cfg.HTTPPort,
 		Handler:           mux,
-		ReadTimeout:       5 * time.Second,
-		ReadHeaderTimeout: 2 * time.Second,
-		IdleTimeout:       10 * time.Second,
+		ReadTimeout:       0,
+		ReadHeaderTimeout: 0,
+		IdleTimeout:       0,
 		MaxHeaderBytes:    1 << 20,
 	}
 

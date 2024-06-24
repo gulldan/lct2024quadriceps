@@ -14,6 +14,7 @@ type Copyright struct {
 	OrigStart      int    `json:"orig_start,omitempty"`
 	OrigEnd        int    `json:"orig_end,omitempty"`
 	OrigID         string `json:"orig_id,omitempty"`
+	OrigURL        string `json:"orig_url,omitempty"`
 }
 
 type Task struct {

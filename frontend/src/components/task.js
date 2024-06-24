@@ -13,18 +13,19 @@ import PrettyStatus from "@/components/status";
 
 export default function Task({ id, name, previewUrl, status }) {
   const router = useRouter();
-  
 
   const click = useCallback(() => {
     router.push("/task/" + id);
   }, [id]);
 
   return (
-    <Card onClick={click} style={{ cursor: "pointer" }}>
-      <CardImg variant="top" src={previewUrl} />
+    <Card onClick={click} style={{ cursor: "pointer", maxHeight: 300 }}>
+      <CardImg style={{"objectFit": "contain", height: "100%", width: "100%"}} variant="top" src={previewUrl} />
       <CardBody>
         <CardTitle>{name}</CardTitle>
-        <CardTitle><PrettyStatus status={status}/></CardTitle>
+        <CardTitle>
+          <PrettyStatus status={status} />
+        </CardTitle>
       </CardBody>
     </Card>
   );

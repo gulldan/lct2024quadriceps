@@ -15,8 +15,8 @@ type Config struct {
 	Minio         MinioConfig
 	Postgres      PostgresConfig
 	HTTPPort      string `env:"HTTP_PORT" env-default:"8888"`
-	Wav2VecAddr   string `env:"WAV2VEC_ADDR" env-default:"http://10.35.56.4:18010"`
-	VideocopyAddr string `env:"VIDEOCOPY_ADDR" env-default:"http://10.35.56.10:32323"`
+	Wav2VecAddr   string `env:"WAV2VEC_ADDR" env-default:"wav2vec:8000"`
+	VideocopyAddr string `env:"VIDEOCOPY_ADDR" env-default:"video_copy:8000"`
 }
 
 type GrpcConfig struct {

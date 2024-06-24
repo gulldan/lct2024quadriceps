@@ -1,25 +1,46 @@
+import logging
+
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
+
+logging.basicConfig(level=logging.INFO)
 
 
 class QdrantClientApi:
     def __init__(
-        self, qdrant_host: str, qdrant_port: int, collection_name: str = "audio_embeddings", embbedings_dim: int = 512
+        self,
+        qdrant_host: str,
+        qdrant_port: int,
+        collection_name: str = "audio_embeddings",
+        embbedings_dim: int = 512,
+        create_collection: bool = False,
     ) -> None:
         self.qdrant_host = qdrant_host
         self.qdrant_port = qdrant_port
         self.collection_name = collection_name
         self.embbedings_dim = embbedings_dim
+        self.create_collection = create_collection
 
         self.qdrant_client = QdrantClient(host=qdrant_host, port=qdrant_port)
 
-        # self.qdrant_client.recreate_collection(
-        #     collection_name=collection_name, vectors_config=VectorParams(size=embbedings_dim, distance=Distance.COSINE)
-        # )
+        if self.create_collection:
+            if self.qdrant_client.collection_exists(collection_name=self.collection_name):
+                logging.info(f"Collection '{self.collection_name}' already exists.")
+            else:
+                self.qdrant_client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=VectorParams(size=embbedings_dim, distance=Distance.COSINE),
+                )
+                logging.info(f"Collection '{self.collection_name}' created successfully.")
 
-        self.qdrant_client.recreate_collection(
-            collection_name="val_embbedings", vectors_config=VectorParams(size=embbedings_dim, distance=Distance.COSINE)
-        )
+            if self.qdrant_client.collection_exists(collection_name="val_embbedings"):
+                logging.info("Collection val_embbedings already exists.")
+            else:
+                self.qdrant_client.create_collection(
+                    collection_name="val_embbedings",
+                    vectors_config=VectorParams(size=embbedings_dim, distance=Distance.COSINE),
+                )
+                logging.info("Collection val_embbedings created successfully.")
 
         self.id_counter = 0
         self.test_id_counter = 0

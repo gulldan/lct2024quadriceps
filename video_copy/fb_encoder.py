@@ -5,11 +5,11 @@ from torchvision import transforms
 
 
 class ImageList(Dataset):
-    def __init__(self, image_list):
+    def __init__(self, image_list) -> None:
         Dataset.__init__(self)
         self.image_list = image_list
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.image_list)
 
     def __getitem__(self, i):
@@ -31,7 +31,7 @@ class ImageList(Dataset):
 
 
 class FBEncoder:
-    def __init__(self, model_path: str, batch_size: int = 1):
+    def __init__(self, model_path: str, batch_size: int = 1) -> None:
         self.batch_size = batch_size
         self.model = torch.jit.load(model_path).eval().cuda()
 

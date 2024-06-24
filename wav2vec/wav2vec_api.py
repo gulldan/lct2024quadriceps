@@ -15,6 +15,7 @@ from wav2vec import Wav2Vec
 QDRANT_HOST = os.getenv("QDRANT_HOST")
 QDRANT_PORT = os.getenv("QDRANT_PORT")
 DEVICE = os.getenv("DEVICE")
+RECREATE = os.getenv("CREATE_COLLECTION")
 
 
 class EmbeddingResponse(BaseModel):
@@ -34,7 +35,7 @@ class CopyrightAnswer(BaseModel):
 
 app = FastAPI()
 
-qdrant_client = QdrantClientApi(QDRANT_HOST, QDRANT_PORT)
+qdrant_client = QdrantClientApi(QDRANT_HOST, QDRANT_PORT, create_collection=RECREATE)
 audio_clips_save_path = "clipped_audio"
 videoclip_client = VideoClipper(audio_clips_save_path)
 wav2vec = Wav2Vec(qdrant_client, videoclip_client, device=DEVICE)

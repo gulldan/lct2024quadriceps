@@ -83,21 +83,21 @@ func New(cfg *config.Config, log *zerolog.Logger) *TaskController {
 	return controller
 }
 
-func (ctl *TaskController) CreateTask(ctx context.Context, file io.Reader, filename string) (int64, error) {
+func (ctl *TaskController) CreateTask(_ context.Context, file io.Reader, filename string) (int64, error) {
 	fmt.Println(file, filename)
-	videoID, previewID, videoLen, err := ctl.makePreviewUploadVideo(ctx, file)
+	videoID, previewID, videoLen, err := ctl.makePreviewUploadVideo(context.Background(), file)
 	if err != nil {
 		return 0, fmt.Errorf("failed to upload video: %w", err)
 	}
 
 	fmt.Println(videoID, previewID, videoLen, err)
 
-	hash, err := ctl.getHashFromVideo(ctx, videoID, ctl.minioClient.GetVideoBucketName())
+	hash, err := ctl.getHashFromVideo(context.Background(), videoID, ctl.minioClient.GetVideoBucketName())
 	if err != nil {
 		return 0, fmt.Errorf("failed to calculate hash for video: %w", err)
 	}
 
-	videos, err := ctl.pgConn.GetOrigVideosByHash(ctx, pgtype.Text{
+	videos, err := ctl.pgConn.GetOrigVideosByHash(context.Background(), pgtype.Text{
 		String: hash,
 		Valid:  true,
 	})
@@ -107,7 +107,7 @@ func (ctl *TaskController) CreateTask(ctx context.Context, file io.Reader, filen
 
 	if len(videos) != 0 {
 		//nolint:shadow
-		task, errC := ctl.pgConn.CreateTask(ctx, pgsql.CreateTaskParams{
+		task, errC := ctl.pgConn.CreateTask(context.Background(), pgsql.CreateTaskParams{
 			VideoID: pgtype.Text{
 				String: videoID,
 				Valid:  true,
@@ -142,7 +142,7 @@ func (ctl *TaskController) CreateTask(ctx context.Context, file io.Reader, filen
 			return 0, fmt.Errorf("failed to marshal copyright to json: %w", err)
 		}
 
-		if errC = ctl.pgConn.UpdateTaskCopyright(ctx, pgsql.UpdateTaskCopyrightParams{
+		if errC = ctl.pgConn.UpdateTaskCopyright(context.Background(), pgsql.UpdateTaskCopyrightParams{
 			TaskID:    task.TaskID,
 			Copyright: copyright,
 		}); errC != nil {
@@ -152,7 +152,7 @@ func (ctl *TaskController) CreateTask(ctx context.Context, file io.Reader, filen
 		return task.TaskID, nil
 	}
 
-	task, err := ctl.pgConn.CreateTask(ctx, pgsql.CreateTaskParams{
+	task, err := ctl.pgConn.CreateTask(context.Background(), pgsql.CreateTaskParams{
 		VideoID: pgtype.Text{
 			String: videoID,
 			Valid:  true,
@@ -275,7 +275,6 @@ func (ctl *TaskController) checkForCopyright(ctx context.Context, task pgsql.Tas
 
 func (ctl *TaskController) runVideoAudioCopyrightCheck(ctx context.Context, task pgsql.Task) (wav2vec.CopyrightAnswer, videocopy.SearchResponse, error) {
 	errCh := make(chan error, 2)
-	defer close(errCh)
 	var (
 		wg             sync.WaitGroup
 		audioCopyright wav2vec.CopyrightAnswer
@@ -303,6 +302,7 @@ func (ctl *TaskController) runVideoAudioCopyrightCheck(ctx context.Context, task
 	}()
 
 	wg.Wait()
+	close(errCh)
 	var retErr error
 	for err := range errCh {
 		ctl.log.Error().Err(err).Msg("run copyright failed")
@@ -316,8 +316,8 @@ func (ctl *TaskController) runVideoAudioCopyrightCheck(ctx context.Context, task
 	return audioCopyright, videoCopyright, nil
 }
 
-func (ctl *TaskController) getVideoCopyright(ctx context.Context, task pgsql.Task) (videocopy.SearchResponse, error) {
-	videoReader, err := ctl.minioClient.GetFileReader(ctx, task.VideoID.String, ctl.minioClient.GetVideoBucketName())
+func (ctl *TaskController) getVideoCopyright(_ context.Context, task pgsql.Task) (videocopy.SearchResponse, error) {
+	videoReader, err := ctl.minioClient.GetFileReader(context.Background(), task.VideoID.String, ctl.minioClient.GetVideoBucketName())
 	if err != nil {
 		return videocopy.SearchResponse{}, err
 	}
@@ -325,7 +325,7 @@ func (ctl *TaskController) getVideoCopyright(ctx context.Context, task pgsql.Tas
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	var fw io.Writer
-	if fw, err = w.CreateFormFile("video_file", task.VideoName.String); err != nil {
+	if fw, err = w.CreateFormFile("file", task.VideoName.String); err != nil {
 		return videocopy.SearchResponse{}, err
 	}
 
@@ -333,7 +333,9 @@ func (ctl *TaskController) getVideoCopyright(ctx context.Context, task pgsql.Tas
 		return videocopy.SearchResponse{}, err
 	}
 
-	resp, err := ctl.videocopy.SearchFindVideoPostWithBody(ctx, w.FormDataContentType(), &b)
+	w.Close()
+
+	resp, err := ctl.videocopy.SearchFindVideoPostWithBody(context.Background(), w.FormDataContentType(), &b)
 	if err != nil {
 		return videocopy.SearchResponse{}, fmt.Errorf("failed to find video infringement: %w", err)
 	}
@@ -354,8 +356,8 @@ func (ctl *TaskController) getVideoCopyright(ctx context.Context, task pgsql.Tas
 	return copyright, nil
 }
 
-func (ctl *TaskController) getAudioCopyright(ctx context.Context, task pgsql.Task) (wav2vec.CopyrightAnswer, error) {
-	videoReader, err := ctl.minioClient.GetFileReader(ctx, task.VideoID.String, ctl.minioClient.GetVideoBucketName())
+func (ctl *TaskController) getAudioCopyright(_ context.Context, task pgsql.Task) (wav2vec.CopyrightAnswer, error) {
+	videoReader, err := ctl.minioClient.GetFileReader(context.Background(), task.VideoID.String, ctl.minioClient.GetVideoBucketName())
 	if err != nil {
 		return wav2vec.CopyrightAnswer{}, err
 	}
@@ -394,7 +396,9 @@ func (ctl *TaskController) getAudioCopyright(ctx context.Context, task pgsql.Tas
 		return wav2vec.CopyrightAnswer{}, err
 	}
 
-	resp, err := ctl.wav2vecClient.UpdateDataBaseFindCopyrightInfringementPostWithBody(ctx, w.FormDataContentType(), &b)
+	w.Close()
+
+	resp, err := ctl.wav2vecClient.UpdateDataBaseFindCopyrightInfringementPostWithBody(context.Background(), w.FormDataContentType(), &b)
 	if err != nil {
 		return wav2vec.CopyrightAnswer{}, fmt.Errorf("failed to find audio infringement: %w", err)
 	}
@@ -415,22 +419,24 @@ func (ctl *TaskController) getAudioCopyright(ctx context.Context, task pgsql.Tas
 	return copyright, nil
 }
 
-func (ctl *TaskController) UploadOriginalVideo(ctx context.Context, file io.Reader, filename string) (string, error) {
-	origVideoID, err := ctl.uploadOriginalVideoToMinio(ctx, file)
+func (ctl *TaskController) UploadOriginalVideo(_ context.Context, file io.Reader, filename string, uploadEmbeddings bool) (string, error) {
+	origVideoID, err := ctl.uploadOriginalVideoToMinio(context.Background(), file)
 	if err != nil {
 		return "", err
 	}
 
-	hash, err := ctl.getHashFromVideo(ctx, origVideoID, ctl.minioClient.GetOrigVideoBucket())
+	hash, err := ctl.getHashFromVideo(context.Background(), origVideoID, ctl.minioClient.GetOrigVideoBucket())
 	if err != nil {
 		return "", fmt.Errorf("failed to get hash from orig video: %w", err)
 	}
 
-	if err = ctl.updateOriginalEmbeddings(ctx, origVideoID, filename); err != nil {
-		return "", fmt.Errorf("failed to update original embeddings: %w", err)
+	if uploadEmbeddings {
+		if err = ctl.updateOriginalEmbeddings(context.Background(), origVideoID, filename); err != nil {
+			return "", fmt.Errorf("failed to update original embeddings: %w", err)
+		}
 	}
 
-	if _, err = ctl.pgConn.CreateOrigVideo(ctx, pgsql.CreateOrigVideoParams{
+	if _, err = ctl.pgConn.CreateOrigVideo(context.Background(), pgsql.CreateOrigVideoParams{
 		VideoID: pgtype.Text{
 			String: filename,
 			Valid:  true,
@@ -450,15 +456,14 @@ func (ctl *TaskController) UploadOriginalVideo(ctx context.Context, file io.Read
 	return origVideoID, nil
 }
 
-func (ctl *TaskController) updateOriginalEmbeddings(ctx context.Context, origVideoID, filename string) error {
+func (ctl *TaskController) updateOriginalEmbeddings(_ context.Context, origVideoID, filename string) error {
 	errCh := make(chan error, 2)
-	defer close(errCh)
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := ctl.updateOriginalVideoEmbeddings(ctx, origVideoID, filename); err != nil {
+		if err := ctl.updateOriginalVideoEmbeddings(context.Background(), origVideoID, filename); err != nil {
 			errCh <- err
 		}
 	}()
@@ -466,12 +471,13 @@ func (ctl *TaskController) updateOriginalEmbeddings(ctx context.Context, origVid
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := ctl.updateOriginalAudioEmbeddings(ctx, origVideoID, filename); err != nil {
+		if err := ctl.updateOriginalAudioEmbeddings(context.Background(), origVideoID, filename); err != nil {
 			errCh <- err
 		}
 	}()
 
 	wg.Wait()
+	close(errCh)
 	var retErr error
 	for err := range errCh {
 		ctl.log.Error().Err(err).Msg("update original embeddings failed")
@@ -481,8 +487,8 @@ func (ctl *TaskController) updateOriginalEmbeddings(ctx context.Context, origVid
 	return retErr
 }
 
-func (ctl *TaskController) updateOriginalVideoEmbeddings(ctx context.Context, origVideoID, filename string) error {
-	videoReader, err := ctl.minioClient.GetFileReader(ctx, origVideoID, ctl.minioClient.GetOrigVideoBucket())
+func (ctl *TaskController) updateOriginalVideoEmbeddings(_ context.Context, origVideoID, filename string) error {
+	videoReader, err := ctl.minioClient.GetFileReader(context.Background(), origVideoID, ctl.minioClient.GetOrigVideoBucket())
 	if err != nil {
 		return err
 	}
@@ -490,7 +496,7 @@ func (ctl *TaskController) updateOriginalVideoEmbeddings(ctx context.Context, or
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	var fw io.Writer
-	if fw, err = w.CreateFormFile("audio_file", filename); err != nil {
+	if fw, err = w.CreateFormFile("file", filename); err != nil {
 		return err
 	}
 
@@ -498,16 +504,27 @@ func (ctl *TaskController) updateOriginalVideoEmbeddings(ctx context.Context, or
 		return err
 	}
 
-	_, err = ctl.videocopy.UploadUploadVideoPostWithBody(ctx, w.FormDataContentType(), &b)
+	w.Close()
+
+	resp, err := ctl.videocopy.UploadUploadVideoPostWithBody(context.Background(), w.FormDataContentType(), &b)
 	if err != nil {
 		return fmt.Errorf("update database failed: %w", err)
 	}
 
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to get body: %w", err)
+	}
+
+	ctl.log.Info().Str("video_embeddings", string(body)).Msg("video embeddings")
+
 	return nil
 }
 
-func (ctl *TaskController) updateOriginalAudioEmbeddings(ctx context.Context, origVideoID, filename string) error {
-	videoReader, err := ctl.minioClient.GetFileReader(ctx, origVideoID, ctl.minioClient.GetOrigVideoBucket())
+func (ctl *TaskController) updateOriginalAudioEmbeddings(_ context.Context, origVideoID, filename string) error {
+	videoReader, err := ctl.minioClient.GetFileReader(context.Background(), origVideoID, ctl.minioClient.GetOrigVideoBucket())
 	if err != nil {
 		return err
 	}
@@ -546,16 +563,27 @@ func (ctl *TaskController) updateOriginalAudioEmbeddings(ctx context.Context, or
 		return err
 	}
 
-	_, err = ctl.wav2vecClient.UpdateDataBaseUpdateDatabasePostWithBody(ctx, w.FormDataContentType(), &b)
+	w.Close()
+
+	resp, err := ctl.wav2vecClient.UpdateDataBaseUpdateDatabasePostWithBody(context.Background(), w.FormDataContentType(), &b)
 	if err != nil {
 		return fmt.Errorf("update database failed: %w", err)
 	}
 
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to get body: %w", err)
+	}
+
+	ctl.log.Info().Str("audio_embeddings", string(body)).Msg("audio embeddings")
+
 	return nil
 }
 
-func (ctl *TaskController) GetTask(ctx context.Context, id int64) (model.Task, error) {
-	pgtask, err := ctl.pgConn.GetTask(ctx, id)
+func (ctl *TaskController) GetTask(_ context.Context, id int64) (model.Task, error) {
+	pgtask, err := ctl.pgConn.GetTask(context.Background(), id)
 	if err != nil {
 		return model.Task{}, fmt.Errorf("get task failed: %w", err)
 	}
@@ -565,21 +593,36 @@ func (ctl *TaskController) GetTask(ctx context.Context, id int64) (model.Task, e
 		return model.Task{}, err
 	}
 
-	task.VideoIDUrl, err = ctl.minioClient.GetFileURL(ctx, task.VideoIDUrl, ctl.minioClient.GetVideoBucketName())
+	task.VideoIDUrl, err = ctl.minioClient.GetFileURL(context.Background(), task.VideoIDUrl, ctl.minioClient.GetVideoBucketName())
 	if err != nil {
 		return model.Task{}, fmt.Errorf("failed to get video url: %w", err)
 	}
 
-	task.PreviewIDUrl, err = ctl.minioClient.GetFileURL(ctx, task.PreviewIDUrl, ctl.minioClient.GetPreviewBucketName())
+	task.PreviewIDUrl, err = ctl.minioClient.GetFileURL(context.Background(), task.PreviewIDUrl, ctl.minioClient.GetPreviewBucketName())
 	if err != nil {
 		return model.Task{}, fmt.Errorf("failed to get preview url: %w", err)
+	}
+
+	for i, copyright := range task.Copyright {
+		origVideo, err := ctl.pgConn.GetOrigVideo(context.Background(), pgtype.Text{
+			String: copyright.OrigID,
+			Valid:  true,
+		})
+		if err != nil {
+			return task, nil
+		}
+
+		task.Copyright[i].OrigURL, err = ctl.minioClient.GetFileURL(context.Background(), origVideo.VideoMinioID.String, ctl.minioClient.GetOrigVideoBucket())
+		if err != nil {
+			return model.Task{}, fmt.Errorf("failed to get orig video minio url: %w", err)
+		}
 	}
 
 	return task, nil
 }
 
-func (ctl *TaskController) GetTasks(ctx context.Context, limit, offset uint64) ([]model.Task, int64, error) {
-	pgtasks, err := ctl.pgConn.GetTasks(ctx, pgsql.GetTasksParams{
+func (ctl *TaskController) GetTasks(_ context.Context, limit, offset uint64) ([]model.Task, int64, error) {
+	pgtasks, err := ctl.pgConn.GetTasks(context.Background(), pgsql.GetTasksParams{
 		Limit:  int32(limit),
 		Offset: int32(offset),
 	})
@@ -593,18 +636,18 @@ func (ctl *TaskController) GetTasks(ctx context.Context, limit, offset uint64) (
 	}
 
 	for i := range tasks {
-		tasks[i].VideoIDUrl, err = ctl.minioClient.GetFileURL(ctx, tasks[i].VideoIDUrl, ctl.minioClient.GetVideoBucketName())
+		tasks[i].VideoIDUrl, err = ctl.minioClient.GetFileURL(context.Background(), tasks[i].VideoIDUrl, ctl.minioClient.GetVideoBucketName())
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to get video url: %w", err)
 		}
 
-		tasks[i].PreviewIDUrl, err = ctl.minioClient.GetFileURL(ctx, tasks[i].PreviewIDUrl, ctl.minioClient.GetPreviewBucketName())
+		tasks[i].PreviewIDUrl, err = ctl.minioClient.GetFileURL(context.Background(), tasks[i].PreviewIDUrl, ctl.minioClient.GetPreviewBucketName())
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to get preview url: %w", err)
 		}
 	}
 
-	total, err := ctl.pgConn.GetTasksCount(ctx)
+	total, err := ctl.pgConn.GetTasksCount(context.Background())
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get tasks count: %w", err)
 	}
@@ -612,7 +655,7 @@ func (ctl *TaskController) GetTasks(ctx context.Context, limit, offset uint64) (
 	return tasks, total, nil
 }
 
-func (ctl *TaskController) makePreviewUploadVideo(ctx context.Context, file io.Reader) (videoID string, previewID string, videoLen int, err error) {
+func (ctl *TaskController) makePreviewUploadVideo(_ context.Context, file io.Reader) (videoID string, previewID string, videoLen int, err error) {
 	id := xid.New().String() + ".mp4"
 
 	tmpFile, err := os.CreateTemp("", "")
@@ -639,7 +682,7 @@ func (ctl *TaskController) makePreviewUploadVideo(ctx context.Context, file io.R
 		return "", "", 0, fmt.Errorf("failed to reset reader tmpfile: %w", err)
 	}
 
-	if err = ctl.minioClient.UploadFile(ctx, tmpFile, stat.Size(), id, ctl.minioClient.GetVideoBucketName()); err != nil {
+	if err = ctl.minioClient.UploadFile(context.Background(), tmpFile, stat.Size(), id, ctl.minioClient.GetVideoBucketName()); err != nil {
 		return "", "", 0, fmt.Errorf("failed to upload video to minio: %w", err)
 	}
 
@@ -659,14 +702,14 @@ func (ctl *TaskController) makePreviewUploadVideo(ctx context.Context, file io.R
 		}
 	}()
 
-	if err = ctl.minioClient.UploadFileFromOs(ctx, previewPicture, previewPicture, ctl.minioClient.GetPreviewBucketName()); err != nil {
+	if err = ctl.minioClient.UploadFileFromOs(context.Background(), previewPicture, previewPicture, ctl.minioClient.GetPreviewBucketName()); err != nil {
 		return "", "", 0, fmt.Errorf("failed to upload picture to minio: %w", err)
 	}
 
 	return id, previewPicture, int(videoLenFloat.Seconds()), nil
 }
 
-func (ctl *TaskController) uploadOriginalVideoToMinio(ctx context.Context, file io.Reader) (videoID string, err error) {
+func (ctl *TaskController) uploadOriginalVideoToMinio(_ context.Context, file io.Reader) (videoID string, err error) {
 	id := xid.New().String() + ".mp4"
 
 	tmpFile, err := os.CreateTemp("", "")
@@ -694,7 +737,7 @@ func (ctl *TaskController) uploadOriginalVideoToMinio(ctx context.Context, file 
 		return "", fmt.Errorf("failed to get file metainfo: %w", err)
 	}
 
-	if err = ctl.minioClient.UploadFile(ctx, tmpFile, stat.Size(), id, ctl.minioClient.GetOrigVideoBucket()); err != nil {
+	if err = ctl.minioClient.UploadFile(context.Background(), tmpFile, stat.Size(), id, ctl.minioClient.GetOrigVideoBucket()); err != nil {
 		return "", fmt.Errorf("failed to upload video to minio: %w", err)
 	}
 

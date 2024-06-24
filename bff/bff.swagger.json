@@ -211,6 +211,9 @@
         },
         "origId": {
           "type": "string"
+        },
+        "origUrl": {
+          "type": "string"
         }
       }
     },
@@ -313,6 +316,9 @@
         "file": {
           "type": "string",
           "format": "byte"
+        },
+        "notUploadEmbeddings": {
+          "type": "boolean"
         }
       }
     },

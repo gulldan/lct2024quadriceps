@@ -7,7 +7,7 @@ from torch import nn
 
 
 class VisionTransformerPattern(VisionTransformer):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.pattern_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim))
         num_patches = self.patch_embed.num_patches
@@ -55,8 +55,8 @@ class VisionTransformer(nn.Module):
         dropout=0,
         num_classes=0,
         dev=None,
-    ):
-        super(VisionTransformer, self).__init__()
+    ) -> None:
+        super().__init__()
         self.pretrained = True
         self.cut_at_pooling = cut_at_pooling
         self.num_classes = num_classes

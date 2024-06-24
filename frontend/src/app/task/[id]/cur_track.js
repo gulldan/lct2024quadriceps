@@ -11,31 +11,33 @@ import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 
 import { PageContext } from "./context";
-import { getTask } from "@/utils/web";
 
 export function CurTrack() {
   const [selected, setSelected] = useState(null);
-  const [orig, setOrig] = useState(null);
+
   const { data } = useContext(PageContext);
 
   useEffect(() => {
     if (data.current) {
-      setSelected(data.copyright[data.current]);
+      setSelected(data.current);
     } else {
       setSelected(null);
     }
   }, [data.current, data.copyright]);
 
-  useEffect(() => {
-    if (selected) {
-      getTask(selected.orig_id).then((res) => {
-        setOrig(res);
-      });
-    }
-  }, [selected]);
-
-  if (!selected || !orig) {
+  if (!selected) {
     return <></>;
+  }
+
+  if (!selected.origUrl) {
+    <div>
+      <div className="text-center">
+        <h2>
+          Извините, пока почему-то нет ссылки на оригинал, наша команда
+          специалистов разбирается с данной проблемой
+        </h2>
+      </div>
+    </div>;
   }
 
   return (
@@ -45,7 +47,7 @@ export function CurTrack() {
       </div>
       <MediaPlayer
         viewType={"video"}
-        src={orig.videoUrl}
+        src={selected.origUrl}
         load={"eager"} // play
         posterLoad={"play"}
         aspectRatio="16 / 9"

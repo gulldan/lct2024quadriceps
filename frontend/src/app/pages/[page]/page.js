@@ -12,7 +12,6 @@ export default async function Home({ params }) {
   const per_page_limit = 12;
 
   const page = parseInt(params.page);
-  console.debug("page", page);
   if (isNaN(page) || page < 1) {
     return notFound();
   }
@@ -27,7 +26,7 @@ export default async function Home({ params }) {
   const total = parseInt(res["total"]);
   const tasks_preview = res["tasksPreview"];
 
-  if (tasks_preview.length == 0) {
+  if (tasks_preview.length == 0 && page > 1) {
     return notFound();
   }
 

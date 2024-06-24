@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, UploadFile
 from fb_encoder import FBEncoder
 from image_crop import ImageCrop
 from logger import logger
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     cropper_path: str = Field("./yolo.pt", alias="CROP_MODEL")
     encoder_path: str = Field("./sscd_disc_large.torchscript.pt", alias="ENCODER_MODEL")
     batch_size: int = Field(128, alias="BATCH_SIZE")
-    qdrant_addr: str = Field("0.0.0.0", alias="QDRANT_HOST")
+    qdrant_addr: str = Field("0.0.0.0", alias="QDRANT_HOST")  # noqa: S104
     qdrant_port: int = Field(6333, alias="QDRANT_PORT")
     create_collection: bool = Field(True, alias="CREATE_COLLECTION")
 

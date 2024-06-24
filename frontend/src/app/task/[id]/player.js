@@ -23,13 +23,13 @@ import { PageContext } from "./context";
 function ChaptersObserver() {
   const activeChaptersTrack = useActiveTextTrack("chapters");
   const activeCues = useActiveTextCues(activeChaptersTrack);
-  const { setData } = useContext(PageContext);
+  const { data, setData } = useContext(PageContext);
 
   useEffect(() => {
     if (activeCues.length > 0) {
       setData((prevdata) => ({
         ...prevdata,
-        current: activeCues[0].id,
+        current: activeCues[0],
       }));
     } else {
       setData((prevdata) => ({ ...prevdata, current: null }));
@@ -43,16 +43,20 @@ export function Player() {
   const { data } = useContext(PageContext);
 
   useEffect(() => {
+    console.log(data)
     setContent(
-      data.copyright.map((t) => ({
+      data.copyright.map((t, i) => ({
         id: t.origId,
-        startTime: t.copyrightStart,
-        endTime: t.copyrightEnd,
+        origUrl: t.origUrl,
+        startTime: parseInt(t.copyrightStart),
+        endTime: parseInt(t.copyrightEnd),
+        origStart: parseInt(t.origStart),
+        origEnd: parseInt(t.origEnd),
       }))
     );
   }, [data.copyright]);
 
-  return (
+  return (<div>
     <MediaPlayer
       viewType={"video"}
       src={data.videoUrl}
@@ -72,6 +76,6 @@ export function Player() {
       </MediaProvider>
       <DefaultAudioLayout icons={defaultLayoutIcons} />
       <DefaultVideoLayout icons={defaultLayoutIcons} />
-    </MediaPlayer>
+    </MediaPlayer></div>
   );
 }

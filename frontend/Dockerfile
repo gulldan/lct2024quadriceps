@@ -3,7 +3,7 @@ FROM node:22-alpine AS base
 # 1. Install dependencies only when needed
 FROM base AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat make gcc g++ vips-dev
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ RUN \
 
 
 # 2. Rebuild the source code only when needed
-FROM base AS builder
+FROM deps AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -27,7 +27,7 @@ COPY . .
 RUN npm run build
 
 # 3. Production image, copy all the files and run next
-FROM base AS runner
+FROM deps AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

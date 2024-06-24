@@ -15,7 +15,7 @@ function ActiveWait() {
   useEffect(() => {
     const interval = setInterval(() => {
       getTask(data.id).then((t) => {
-        if (JSON.stringify(t) != JSON.stringify(data)) {
+        if (t.status != t.status) {
           setData(t);
         }
       });

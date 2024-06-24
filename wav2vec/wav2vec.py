@@ -43,10 +43,10 @@ class Wav2Vec:
         input_audio = self.feature_extractor(resampled_audio, return_tensors="pt", sampling_rate=self.model_sample_rate)
 
         if self.device == "cuda":
-            return torch.tensor(input_audio.input_values).clone().cuda()
+            return torch.tensor(input_audio.input_values).clone().detach().cuda()
         return torch.tensor(input_audio.input_values).clone()
 
-    def exctract_embedding(self, audio_path: str, audio_type: str="index") -> list:
+    def exctract_embedding(self, audio_path: str, audio_type: str = "index") -> list:
         if audio_type == "index":
             with torch.no_grad():
                 return torch.mean(self.model(self.get_input_audio(audio_path)).extract_features[0], dim=0).cpu().detach().tolist()
@@ -61,16 +61,16 @@ class Wav2Vec:
                     ),
                 ]
             ),
-            with_vectors=True
+            with_vectors=True,
         )[0]
 
         if len(vector_search) != 0:
             return vector_search[0].vector
 
         with torch.no_grad():
-            embbeding = torch.mean(
-                self.model(self.get_input_audio(audio_path)).extract_features[0], dim=0
-                ).cpu().detach().tolist()
+            embbeding = (
+                torch.mean(self.model(self.get_input_audio(audio_path)).extract_features[0], dim=0).cpu().detach().tolist()
+            )
             point = PointStruct(
                 id=self.qdrant_client.test_id_counter,
                 vector=embbeding,
@@ -105,7 +105,7 @@ class Wav2Vec:
             search_results_count += len(search_dict[result])
 
         if search_results_count < 1:
-            sub_clip_hash = list(search_dict.keys())[0].split("/")[-1].split("_")[0]
+            sub_clip_hash = next(iter(search_dict.keys())).split("/")[-1].split("_")[0]
             return {
                 "ID_piracy_wav2vec": sub_clip_hash + ".mp4",
                 "segment_wav2vec": "-",

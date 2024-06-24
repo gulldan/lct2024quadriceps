@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/cors"
@@ -91,8 +92,9 @@ func HandleBinaryFileUpload(h http.Handler, cfg *config.Config, logger *zerolog.
 
 			taskCtl := taskcontroller.New(nil, nil)
 
-			id, err := taskCtl.CreateTask(r.Context(), f, header.Filename)
+			id, err := taskCtl.CreateTask(context.Background(), f, header.Filename)
 			if err != nil {
+				logger.Error().Err(err).Msg("create task failed")
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte(err.Error()))
 				return
@@ -102,6 +104,7 @@ func HandleBinaryFileUpload(h http.Handler, cfg *config.Config, logger *zerolog.
 				Id: id,
 			})
 			if err != nil {
+				logger.Error().Err(err).Msg("json marshal failed")
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte(err.Error()))
 				return
@@ -126,15 +129,23 @@ func HandleOriginalFileUpload(h http.Handler, cfg *config.Config, logger *zerolo
 
 			f, header, err := r.FormFile("file")
 			if err != nil {
+				logger.Error().Err(err).Msg("orig formfile failed")
 				http.Error(w, fmt.Sprintf("failed to get file 'attachment': %s", err.Error()), http.StatusBadRequest)
 				return
 			}
 			defer f.Close()
 
+			enableStr := r.FormValue("not_upload_embeddings")
+			notUploadEmbeddings, err := strconv.ParseBool(enableStr)
+			if err != nil {
+				notUploadEmbeddings = false
+			}
+
 			taskCtl := taskcontroller.New(nil, nil)
 
-			_, err = taskCtl.UploadOriginalVideo(r.Context(), f, header.Filename)
+			_, err = taskCtl.UploadOriginalVideo(context.Background(), f, header.Filename, !notUploadEmbeddings)
 			if err != nil {
+				logger.Error().Err(err).Msg("upload original video failed")
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte(err.Error()))
 				return

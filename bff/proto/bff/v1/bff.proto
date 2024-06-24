@@ -11,6 +11,7 @@ option go_package = "github.com/gulldan/lct2024_copyright/bff/proto/v1;bffv1";
 message UploadOriginalVideoRequest {
   string name = 1;
   bytes file = 2;
+  bool not_upload_embeddings = 3;
 }
 
 message UploadOriginalVideoResponse {}
@@ -58,6 +59,7 @@ message CopyrightTimestamp {
   uint64 orig_start = 3;
   uint64 orig_end = 4;
   string orig_id = 5;
+  string orig_url = 6;
 }
 
 message GetTaskResponse {

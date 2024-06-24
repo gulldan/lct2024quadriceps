@@ -34,9 +34,9 @@ ENV HUGGINGFACE_HUB_CACHE=./models/hf \
     CROP_MODEL=./yolo.pt \
     ENCODER_MODEL=./sscd_disc_large.torchscript.pt \
     ENCODER_MODEL_=./vit_ddpmm_8gpu_512_torch2_ap31_pattern_condition_first_dgg.pth.tar \
-    QDRANT_HOST="0.0.0.0" \
+    QDRANT_HOST="qdrant" \
     QDRANT_PORT="6333" \
-    CREATE_COLLECTION=false \
+    CREATE_COLLECTION=true \
     DEVICE="cuda"
 
 COPY . .

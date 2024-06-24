@@ -45,7 +45,8 @@ function PreviewVideo({ file }) {
 }
 export default function Home() {
   const [file, setFile] = useState(null);
-   const [error, setError] = useState(null);
+  const [error, setError] = useState(null);
+  const [statusMsg, setStatusMsg] = useState(null);
   const [isLoad, setIsLoad] = useState(false);
   const router = useRouter();
 
@@ -55,10 +56,7 @@ export default function Home() {
 
   function check() {
     setIsLoad(true);
-    // setTimeout(() => {
-    //   setIsLoad(false);
-    //   setError("Ай проверка на копирайта сорвался ");
-    // }, 5000);
+    setStatusMsg(null);
     create_task(file)
       .catch((e) => {
         setError(e.message);
@@ -71,10 +69,15 @@ export default function Home() {
       });
   }
   function load() {
+    setStatusMsg(null);
     setIsLoad(true);
     upload(file)
       .catch((e) => {
         setError(e.message);
+      })
+      .then(() => {
+        setStatusMsg("Видео загружено в базу оригиналов")
+        setFile(null)
       })
       .finally(() => {
         setIsLoad(false);
@@ -140,6 +143,7 @@ export default function Home() {
               </Form.Group>
             )}
             {error && <Alert variant={"danger"}>{error}</Alert>}
+            {!error && statusMsg && <Alert variant={"success"}>{statusMsg}</Alert>}
           </Form>
         )}
 

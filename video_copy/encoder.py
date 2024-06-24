@@ -11,7 +11,7 @@ torch.set_float32_matmul_precision("high")
 
 
 class ImageList(Dataset):
-    def __init__(self, image_list, imsize=None):
+    def __init__(self, image_list, imsize=None) -> None:
         Dataset.__init__(self)
         self.image_list = image_list
         mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
@@ -23,7 +23,7 @@ class ImageList(Dataset):
 
         self.imsize = imsize
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.image_list)
 
     def __getitem__(self, i):

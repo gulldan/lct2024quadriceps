@@ -34,7 +34,7 @@ func (h *Handler) UploadOriginalVideo(ctx context.Context, req *bffv1.UploadOrig
 }
 
 func (h *Handler) GetTasksPreview(ctx context.Context, req *bffv1.GetTasksPreviewRequest) (*bffv1.GetTasksPreviewResponse, error) {
-	tasks, total, err := h.taskCtl.GetTasks(ctx, req.Limit, req.Page*req.Limit)
+	tasks, total, err := h.taskCtl.GetTasks(context.Background(), req.Limit, req.Page*req.Limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tasks: %w", err)
 	}
@@ -46,7 +46,7 @@ func (h *Handler) GetTasksPreview(ctx context.Context, req *bffv1.GetTasksPrevie
 }
 
 func (h *Handler) GetTask(ctx context.Context, req *bffv1.GetTaskRequest) (*bffv1.GetTaskResponse, error) {
-	task, err := h.taskCtl.GetTask(ctx, req.Id)
+	task, err := h.taskCtl.GetTask(context.Background(), req.Id)
 	if err != nil {
 		return nil, fmt.Errorf("get task failed: %w", err)
 	}

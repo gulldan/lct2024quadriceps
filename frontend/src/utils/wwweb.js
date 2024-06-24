@@ -12,9 +12,9 @@ export async function getTask(id) {
   let out = {
     id: id,
     name: `name name ${id}`,
-    src: "/test/video2.mp4",
+    videoUrl: "/test/video2.mp4",
     status: i > 5 ? "TASK_STATUS_DONE" : "TASK_STATUS_IN_PROGRESS",
-    timestamps: [],
+    copyright: [],
   };
 
   if (i > 5) {
@@ -22,8 +22,8 @@ export async function getTask(id) {
       start: 3,
       end: 6,
       orig_id: 2,
-      orig_start: 5,
-      orig_end: 8,
+      origStart: 5,
+      origEnd: 8,
     });
   }
   return out;
@@ -40,7 +40,7 @@ function randomTask(id) {
   return {
     id: id,
     name: "stub",
-    preview_url: "/test/gool.png",
+    previewUrl: "/test/gool.png",
     status: s[id % s.length],
   };
 }
@@ -53,7 +53,7 @@ export async function getTasks(page, size) {
   }
 
   return {
-    tasks_preview: out.slice((page - 1) * size, (page - 1) * size + size),
+    tasksPreview: out.slice((page - 1) * size, (page - 1) * size + size),
     total: 64,
   };
 }

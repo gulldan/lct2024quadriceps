@@ -17,20 +17,24 @@ class Matcher:
         cropper,
         collection_name="ref",
         vector_dim: int = 512,
-        qdrant_addr: str = "10.35.56.10",
+        qdrant_addr: str = "qdrant",
         qdrant_port: int = 6333,
-        create_collection: bool = True
+        create_collection: bool = True,
     ) -> None:
         self.collection_name = collection_name
         self.encoder = encoder
         self.cropper = cropper
         self.client = QdrantClient(qdrant_addr, port=qdrant_port, timeout=60)
         if create_collection:
-            self.client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=VectorParams(size=vector_dim, distance=Distance.COSINE),
-                optimizers_config=models.OptimizersConfigDiff(memmap_threshold=10000),
-            )
+            if self.client.collection_exists(collection_name=self.collection_name):
+                logger.info(f"Collection '{self.collection_name}' already exists.")
+            else:
+                self.client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=VectorParams(size=vector_dim, distance=Distance.COSINE),
+                    optimizers_config=models.OptimizersConfigDiff(memmap_threshold=10000),
+                )
+                logger.info(f"Collection '{self.collection_name}' created successfully.")
 
     @staticmethod
     def extract_frames(input_video, output_directory):
@@ -51,7 +55,7 @@ class Matcher:
         logger.info("Getting embeddings")
         embeddings = self.encoder.embeddings_one_video(frame_paths)
 
-        payload = list([{"frame": i + 1, "file_name": video_path.split("/")[-1]} for i in range(len(embeddings))])
+        payload = [{"frame": i + 1, "file_name": video_path.split("/")[-1]} for i in range(len(embeddings))]
         num_points = self.client.get_collection(collection_name=self.collection_name).points_count
         logger.info(f"Uploading {len(embeddings)} embeddings")
         self.client.upload_collection(
