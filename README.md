@@ -2,6 +2,9 @@
 
 Сервис проверки видеофайлов на нарушение авторских прав
 
+3 место
+https://t.me/leaders_channel/1059
+
 https://i.moscow/lct/hackatons/226971949a4c481199f01fe477801c3d/ru/
 
 сабмит находится в /docs/submit.csv
